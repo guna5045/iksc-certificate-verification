@@ -35,12 +35,11 @@ function loadStoredCertificates(): CertificateRecord[] {
       if (stored !== null) {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          // Reject any legacy cache that might contain fake mock data
-          const hasStaleMock = parsed.some(
-            c => (c.participantName && c.participantName.includes('GOKUL')) ||
-                 (c.id === 'IKSC-EBTC-2026-0003' && c.participantName !== 'BATTU VENU GOPAL')
+          // Validate that stored cache matches current production roster
+          const isCurrentRoster = parsed.some(
+            c => c.id === 'IKSC-EBTC-2026-0003' && c.participantName === 'BATTU VENU GOPAL'
           );
-          if (!hasStaleMock) {
+          if (isCurrentRoster) {
             return parsed;
           }
         }

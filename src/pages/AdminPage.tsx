@@ -29,6 +29,8 @@ export const AdminPage: React.FC = () => {
   const [filterEventId, setFilterEventId] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [pageSize, setPageSize] = useState<'50' | '100' | 'all'>('100');
+  const [visibleCount, setVisibleCount] = useState<number>(100);
 
   // Add Event Form State
   const [newEventName, setNewEventName] = useState('');
@@ -327,6 +329,11 @@ export const AdminPage: React.FC = () => {
       c.registrationNumber.toLowerCase().includes(q);
     return matchesEvent && matchesStatus && matchesQuery;
   });
+
+  // Displayed certificates based on page size / visible count limit
+  const displayedCerts = pageSize === 'all' 
+    ? filteredCerts 
+    : filteredCerts.slice(0, visibleCount);
 
   // Calculate stats
   const totalCertsCount = certificates.length;
@@ -698,6 +705,25 @@ export const AdminPage: React.FC = () => {
                   <option value="REVOKED">REVOKED</option>
                 </select>
               </div>
+
+              <div style={{ width: '140px' }}>
+                <select
+                  className="form-select"
+                  value={pageSize}
+                  onChange={(e) => {
+                    const val = e.target.value as '50' | '100' | 'all';
+                    setPageSize(val);
+                    if (val !== 'all') {
+                      setVisibleCount(parseInt(val, 10));
+                    }
+                  }}
+                  title="Certificates per page"
+                >
+                  <option value="50">50 / page</option>
+                  <option value="100">100 / page</option>
+                  <option value="all">All ({filteredCerts.length})</option>
+                </select>
+              </div>
             </div>
 
             {/* Event-specific header if event is filtered */}
@@ -740,7 +766,7 @@ export const AdminPage: React.FC = () => {
                       </td>
                     </tr>
                   ) : (
-                    filteredCerts.slice(0, 100).map(cert => (
+                    displayedCerts.map(cert => (
                       <tr key={cert.id}>
                         <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--primary-blue)' }}>
                           {cert.id}
@@ -779,11 +805,43 @@ export const AdminPage: React.FC = () => {
               </table>
             </div>
 
-            {filteredCerts.length > 100 && (
-              <p style={{ marginTop: '0.75rem', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                Showing first 100 of {filteredCerts.length} matching certificates.
+            {/* Table Footer with exact counts and Show More / Show All controls */}
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center', 
+              marginTop: '0.85rem',
+              flexWrap: 'wrap',
+              gap: '0.75rem'
+            }}>
+              <p style={{ fontSize: '0.84rem', color: 'var(--text-muted)', margin: 0 }}>
+                {filteredCerts.length === 0 
+                  ? 'Showing 0 matching certificates.'
+                  : `Showing ${displayedCerts.length} of ${filteredCerts.length} matching certificates.`
+                }
               </p>
-            )}
+
+              {pageSize !== 'all' && displayedCerts.length < filteredCerts.length && (
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <button
+                    type="button"
+                    className="btn-sm-action"
+                    style={{ padding: '0.4rem 0.85rem', fontWeight: 600 }}
+                    onClick={() => setVisibleCount(prev => Math.min(prev + 50, filteredCerts.length))}
+                  >
+                    Show More (+50)
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-sm-action"
+                    style={{ padding: '0.4rem 0.85rem' }}
+                    onClick={() => setPageSize('all')}
+                  >
+                    Show All ({filteredCerts.length})
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         )}
 

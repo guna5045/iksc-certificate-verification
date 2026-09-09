@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 100" width="400" height="100" fill="none">
+  <!-- Crest Icon -->
+  <g transform="translate(10, 10)">
+    <!-- Hexagon/Shield background -->
+    <path d="M40 4 L74 23 L74 61 L40 80 L6 61 L6 23 Z" fill="url(#crestGrad)" stroke="#3B82F6" stroke-width="2"/>
+    <!-- Inner emblem details: Gear + Atom/Globe + Star -->
+    <circle cx="40" cy="42" r="22" stroke="#60A5FA" stroke-width="2" stroke-dasharray="4 2" fill="#0B132B" />
+    <path d="M40 28 L43 37 L52 37 L45 43 L48 52 L40 46 L32 52 L35 43 L28 37 L37 37 Z" fill="#F59E0B" />
+    <!-- Small nodes indicating engineering / connectivity -->
+    <circle cx="24" cy="24" r="3" fill="#38BDF8" />
+    <circle cx="56" cy="24" r="3" fill="#38BDF8" />
+    <circle cx="40" cy="64" r="3.5" fill="#10B981" />
+  </g>
+  
+  <!-- Typography -->
+  <text x="105" y="44" font-family="'Plus Jakarta Sans', system-ui, -apple-system, sans-serif" font-weight="800" font-size="28" fill="#FFFFFF" letter-spacing="1.5">
+    IKSC
+  </text>
+  <text x="180" y="44" font-family="'Plus Jakarta Sans', system-ui, -apple-system, sans-serif" font-weight="600" font-size="14" fill="#38BDF8" letter-spacing="0.5">
+    STUDENT CHAPTER
+  </text>
+  <text x="105" y="66" font-family="'Inter', system-ui, -apple-system, sans-serif" font-weight="500" font-size="11.5" fill="#94A3B8" letter-spacing="0.8">
+    IUCEE • KALASALINGAM ACADEMY OF RESEARCH AND EDUCATION
+  </text>
+
+  <defs>
+    <linearGradient id="crestGrad" x1="6" y1="4" x2="74" y2="80" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#1E3A8A" />
+      <stop offset="100%" stop-color="#0F172A" />
+    </linearGradient>
+  </defs>
+</svg>

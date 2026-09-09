@@ -13,8 +13,16 @@ export function App() {
 
   const parseRoute = useCallback(() => {
     const params = new URLSearchParams(window.location.search);
-    const id = params.get('id');
+    let id = params.get('id');
     const path = window.location.pathname.toLowerCase();
+
+    // Check for /verify/ID format if ?id= is not present
+    if (!id && path.includes('/verify/')) {
+      const match = window.location.pathname.match(/\/verify\/([^\/\?]+)/i);
+      if (match) {
+        id = match[1];
+      }
+    }
 
     if (id) {
       setActiveId(id);

@@ -1,16 +1,79 @@
 import { CertificateRecord, EventInfo, VerificationResult } from '../types/certificate';
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 import defaultEvents from '../data/events.json';
+import ebtcCertificates from '../data/certificates/ebtc-2026.json';
 
 // Standard IKSC ID Regex: e.g. IKSC-EBTC-2026-0001
 export const CERTIFICATE_ID_REGEX = /^IKSC-[A-Z0-9]+-\d{4}-\d{4}$/i;
 
+const STORAGE_EVENTS_KEY = 'iksc_events';
+const STORAGE_CERTS_KEY = 'iksc_certificates';
+
+function loadStoredEvents(): EventInfo[] {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      const stored = localStorage.getItem(STORAGE_EVENTS_KEY);
+      if (stored !== null) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          return parsed;
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to parse stored events:', e);
+    }
+  }
+  return [...(defaultEvents as EventInfo[])];
+}
+
+function loadStoredCertificates(): CertificateRecord[] {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      const stored = localStorage.getItem(STORAGE_CERTS_KEY);
+      if (stored !== null) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          return parsed;
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to parse stored certificates:', e);
+    }
+  }
+  return [...(ebtcCertificates as CertificateRecord[])];
+}
+
+function saveStoredEvents(events: EventInfo[]): void {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      localStorage.setItem(STORAGE_EVENTS_KEY, JSON.stringify(events));
+    } catch (e) {
+      console.warn('Failed to save events to storage:', e);
+    }
+  }
+}
+
+function saveStoredCertificates(certs: CertificateRecord[]): void {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      localStorage.setItem(STORAGE_CERTS_KEY, JSON.stringify(certs));
+    } catch (e) {
+      console.warn('Failed to save certificates to storage:', e);
+    }
+  }
+}
+
 class CertificateService {
-  private localEvents: EventInfo[] = defaultEvents as EventInfo[];
+  private localEvents: EventInfo[] = [];
   private localCertificates: CertificateRecord[] = [];
+  private isLoaded = false;
 
   private async ensureLocalDataLoaded(): Promise<void> {
-    // Initial state is clean. Records are added by admin imports or loaded from Supabase.
+    if (!this.isLoaded) {
+      this.localEvents = loadStoredEvents();
+      this.localCertificates = loadStoredCertificates();
+      this.isLoaded = true;
+    }
   }
 
   public normalizeId(rawId: string | null | undefined): string {
@@ -26,6 +89,7 @@ class CertificateService {
    * Fetch all events for public selector and admin list
    */
   public async getEvents(): Promise<EventInfo[]> {
+    await this.ensureLocalDataLoaded();
     if (isSupabaseConfigured() && supabase) {
       try {
         const { data, error } = await supabase
@@ -35,6 +99,7 @@ class CertificateService {
 
         if (!error && data && data.length > 0) {
           this.localEvents = data as EventInfo[];
+          saveStoredEvents(this.localEvents);
           return this.localEvents;
         }
       } catch (err) {
@@ -51,7 +116,7 @@ class CertificateService {
 
   /**
    * PUBLIC VERIFICATION
-   * - If eventId is provided (from public form): Database query enforces BOTH id AND event_id!
+   * - If eventId is provided (from public form): Query enforces BOTH id AND event_id!
    * - If eventId is omitted (from direct QR scan): Queries exact certificate by id!
    */
   public async verifyCertificate(rawId: string, eventId?: string): Promise<VerificationResult> {
@@ -73,6 +138,8 @@ class CertificateService {
       };
     }
 
+    await this.ensureLocalDataLoaded();
+
     // 1. Supabase Mode: Database level event separation
     if (isSupabaseConfigured() && supabase) {
       try {
@@ -82,7 +149,6 @@ class CertificateService {
           .eq('id', id);
 
         if (eventId) {
-          // Strictly bind query to the selected event
           query = query.eq('event_id', eventId);
         }
 
@@ -132,8 +198,7 @@ class CertificateService {
       }
     }
 
-    // 2. Offline / Local Fallback Mode
-    await this.ensureLocalDataLoaded();
+    // 2. Production Unified Local Data Mode
     const foundCert = this.localCertificates.find(c => c.id.toUpperCase() === id);
 
     if (!foundCert) {
@@ -144,7 +209,7 @@ class CertificateService {
       };
     }
 
-    // Enforce event separation in local mode as well
+    // Enforce strict event isolation in local mode
     if (eventId && foundCert.eventId.toLowerCase() !== eventId.toLowerCase()) {
       return {
         state: 'NOT_FOUND',
@@ -174,7 +239,11 @@ class CertificateService {
   // -------------------------------------------------------------
 
   public async addEvent(newEvent: EventInfo): Promise<void> {
-    const existing = this.localEvents.find(e => e.id.toLowerCase() === newEvent.id.toLowerCase() || (e.code === newEvent.code && e.year === newEvent.year));
+    await this.ensureLocalDataLoaded();
+    const existing = this.localEvents.find(
+      e => e.id.toLowerCase() === newEvent.id.toLowerCase() || 
+           (e.code.toUpperCase() === newEvent.code.toUpperCase() && e.year === newEvent.year)
+    );
     if (existing) {
       throw new Error(`Event with Code "${newEvent.code}" and Year "${newEvent.year}" already exists.`);
     }
@@ -192,18 +261,12 @@ class CertificateService {
       if (error) throw new Error(error.message);
     }
     
-    // Prevent duplicate events in local state
-    const existingIndex = this.localEvents.findIndex(
-      e => e.id.toUpperCase() === newEvent.id.toUpperCase() || (e.code === newEvent.code && e.year === newEvent.year)
-    );
-    if (existingIndex >= 0) {
-      this.localEvents[existingIndex] = newEvent;
-    } else {
-      this.localEvents.unshift(newEvent);
-    }
+    this.localEvents.unshift(newEvent);
+    saveStoredEvents(this.localEvents);
   }
 
-  public async getCertificatesForAdmin(eventId?: string, limit = 500): Promise<CertificateRecord[]> {
+  public async getCertificatesForAdmin(eventId?: string, limit = 1000): Promise<CertificateRecord[]> {
+    await this.ensureLocalDataLoaded();
     if (isSupabaseConfigured() && supabase) {
       let query = supabase
         .from('certificates')
@@ -236,7 +299,6 @@ class CertificateService {
     }
 
     // Local mode
-    await this.ensureLocalDataLoaded();
     if (eventId && eventId !== 'all') {
       return this.localCertificates.filter(c => c.eventId.toLowerCase() === eventId.toLowerCase());
     }
@@ -245,6 +307,7 @@ class CertificateService {
 
   public async importBatchCertificates(certs: CertificateRecord[]): Promise<number> {
     if (certs.length === 0) return 0;
+    await this.ensureLocalDataLoaded();
 
     if (isSupabaseConfigured() && supabase) {
       const rows = certs.map(c => ({
@@ -264,7 +327,6 @@ class CertificateService {
       if (error) throw new Error(error.message);
     }
 
-    await this.ensureLocalDataLoaded();
     // Prevent duplicate entries by ID
     const map = new Map<string, CertificateRecord>();
     for (const c of this.localCertificates) {
@@ -274,15 +336,18 @@ class CertificateService {
       map.set(c.id.toUpperCase(), c);
     }
     this.localCertificates = Array.from(map.values());
+    saveStoredCertificates(this.localCertificates);
     return certs.length;
   }
 
   /**
-   * Resets local in-memory dataset to clean baseline (0 events, 0 certs)
+   * Resets local dataset to baseline production dataset (EBTC-2026 + 111 certs)
    */
   public async resetToProductionDataset(): Promise<void> {
-    this.localEvents = [];
-    this.localCertificates = [];
+    this.localEvents = [...(defaultEvents as EventInfo[])];
+    this.localCertificates = [...(ebtcCertificates as CertificateRecord[])];
+    saveStoredEvents(this.localEvents);
+    saveStoredCertificates(this.localCertificates);
   }
 
   /**
@@ -290,11 +355,11 @@ class CertificateService {
    * Available only to authenticated admins
    */
   public async deleteEvent(eventId: string): Promise<void> {
+    await this.ensureLocalDataLoaded();
     const cleanId = eventId.trim();
 
     // 1. Supabase Deletion
     if (isSupabaseConfigured() && supabase) {
-      // Explicitly delete certificates first to prevent orphaned records
       const { error: certsErr } = await supabase
         .from('certificates')
         .delete()
@@ -303,7 +368,6 @@ class CertificateService {
         console.warn('Error deleting certificates for event:', certsErr);
       }
 
-      // Delete the event
       const { error: eventErr } = await supabase
         .from('events')
         .delete()
@@ -320,12 +384,15 @@ class CertificateService {
     this.localCertificates = this.localCertificates.filter(
       c => c.eventId.toLowerCase() !== cleanId.toLowerCase()
     );
+    saveStoredEvents(this.localEvents);
+    saveStoredCertificates(this.localCertificates);
   }
 
   /**
    * Permanently deletes an individual certificate
    */
   public async deleteCertificate(certId: string): Promise<void> {
+    await this.ensureLocalDataLoaded();
     const cleanId = certId.trim().toUpperCase();
 
     if (isSupabaseConfigured() && supabase) {
@@ -341,9 +408,12 @@ class CertificateService {
     this.localCertificates = this.localCertificates.filter(
       c => c.id.toUpperCase() !== cleanId
     );
+    saveStoredCertificates(this.localCertificates);
   }
 
   public async updateCertificateStatus(id: string, status: 'VALID' | 'REVOKED'): Promise<void> {
+    await this.ensureLocalDataLoaded();
+
     if (isSupabaseConfigured() && supabase) {
       const { error } = await supabase
         .from('certificates')
@@ -352,10 +422,10 @@ class CertificateService {
       if (error) throw new Error(error.message);
     }
 
-    await this.ensureLocalDataLoaded();
     const c = this.localCertificates.find(cert => cert.id.toUpperCase() === id.toUpperCase());
     if (c) {
       c.status = status;
+      saveStoredCertificates(this.localCertificates);
     }
   }
 

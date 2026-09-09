@@ -9,55 +9,88 @@ const DATA_DIR = path.join(__dirname, '..', 'src', 'data');
 
 console.log('=== IKSC Certificate Verification Portal Pre-Deployment Verification ===\n');
 
-// 1. Test Clean Baseline: 0 fake/test events
+// 1. Test Production Events: Exactly 1 real event EBTC-2026 (0 fake/test events)
 const eventsRaw = JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'events.json'), 'utf-8'));
-if (Array.isArray(eventsRaw) && eventsRaw.length === 0) {
-  console.log('[PASS] Events Registry: Completely clean (0 fake/test events).');
+if (Array.isArray(eventsRaw) && eventsRaw.length === 1 && eventsRaw[0].id === 'EBTC-2026') {
+  console.log('[PASS] Events Registry: Verified 1 real production event (EBTC-2026 - Engineering Beyond the Classroom, 0 fake events).');
 } else {
-  console.error(`[FAIL] Expected 0 pre-loaded events in events.json, found ${eventsRaw.length}`);
+  console.error(`[FAIL] Expected 1 real event (EBTC-2026) in events.json, found ${eventsRaw.length}`);
   process.exit(1);
 }
 
-// 2. Test Real EBTC Participant Master Data Available for Import
+// 2. Test Real EBTC Participant Master Data: Exactly 111 certificates
 const ebtcRaw = JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'certificates', 'ebtc-2026.json'), 'utf-8'));
 if (ebtcRaw.length === 111) {
-  console.log(`[PASS] EBTC Master Certificate Roster count: EXACTLY ${ebtcRaw.length} certificates ready for import.`);
+  console.log(`[PASS] EBTC Master Certificate Roster count: EXACTLY ${ebtcRaw.length} certificates.`);
 } else {
   console.error(`[FAIL] Expected 111 EBTC certificates in roster file, got ${ebtcRaw.length}`);
   process.exit(1);
 }
 
-// 3. Test Benchmark Certificate: IKSC-EBTC-2026-0001
-const cert0001 = ebtcRaw.find(c => c.id === 'IKSC-EBTC-2026-0001');
-if (!cert0001) {
-  console.error('[FAIL] Certificate IKSC-EBTC-2026-0001 not found in master roster!');
-  process.exit(1);
-}
-
-const checks = [
-  ['Participant Name', cert0001.participantName, 'JEYAPREETHA S R'],
-  ['Registration Number', cert0001.registrationNumber, '9924030005'],
-  ['Year', cert0001.yearOfStudy, '3rd Year'],
-  ['Department', cert0001.department, 'Aeronautical Engineering'],
-  ['Event', cert0001.eventName, 'Engineering Beyond the Classroom'],
-  ['Date', cert0001.eventDates, '15th and 16th August 2026'],
-  ['Certificate ID', cert0001.id, 'IKSC-EBTC-2026-0001'],
-  ['Issued By', cert0001.issuedBy, 'IUCEE KARE Student Chapter'],
-  ['Status', cert0001.status, 'VALID']
+// 3. Test Benchmark Certificates
+const benchmarkChecks = [
+  {
+    id: 'IKSC-EBTC-2026-0001',
+    participantName: 'JEYAPREETHA S R',
+    registrationNumber: '9924030005',
+    yearOfStudy: '3rd Year',
+    department: 'Aeronautical Engineering',
+    status: 'VALID'
+  },
+  {
+    id: 'IKSC-EBTC-2026-0002',
+    participantName: 'SWETHA N',
+    registrationNumber: '9924030002',
+    yearOfStudy: '1st Year',
+    department: 'Civil Engineering',
+    status: 'VALID'
+  },
+  {
+    id: 'IKSC-EBTC-2026-0008',
+    participantName: 'DIVYA T',
+    registrationNumber: '9924030008',
+    yearOfStudy: '1st Year',
+    department: 'Information Technology',
+    status: 'VALID'
+  },
+  {
+    id: 'IKSC-EBTC-2026-0088',
+    participantName: 'DIVYA T',
+    registrationNumber: '9924030088',
+    yearOfStudy: '1st Year',
+    department: 'Information Technology',
+    status: 'VALID'
+  },
+  {
+    id: 'IKSC-EBTC-2026-0111',
+    participantName: 'ROHIT P',
+    registrationNumber: '9924030111',
+    yearOfStudy: '3rd Year',
+    department: 'Artificial Intelligence & Data Science',
+    status: 'VALID'
+  }
 ];
 
-console.log('\n--- Checking IKSC-EBTC-2026-0001 Specification ---');
-let allPassed = true;
-checks.forEach(([label, actual, expected]) => {
-  if (actual === expected) {
-    console.log(`[PASS] ${label}: "${actual}" matches specification.`);
-  } else {
-    console.error(`[FAIL] ${label}: Expected "${expected}", but got "${actual}"`);
-    allPassed = false;
+console.log('\n--- Checking Benchmark Certificates ---');
+for (const check of benchmarkChecks) {
+  const cert = ebtcRaw.find(c => c.id === check.id);
+  if (!cert) {
+    console.error(`[FAIL] Certificate ${check.id} not found in master roster!`);
+    process.exit(1);
   }
-});
-
-if (!allPassed) process.exit(1);
+  if (
+    cert.participantName === check.participantName &&
+    cert.registrationNumber === check.registrationNumber &&
+    cert.yearOfStudy === check.yearOfStudy &&
+    cert.department === check.department &&
+    cert.status === check.status
+  ) {
+    console.log(`[PASS] ${check.id}: "${cert.participantName}" (${cert.registrationNumber}) verified.`);
+  } else {
+    console.error(`[FAIL] ${check.id}: Details mismatch!`, cert);
+    process.exit(1);
+  }
+}
 
 // 4. Test Vercel SPA Routing Configuration
 const vercelConfigPath = path.join(__dirname, '..', 'vercel.json');

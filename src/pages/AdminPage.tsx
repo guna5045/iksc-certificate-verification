@@ -53,6 +53,11 @@ export const AdminPage: React.FC = () => {
   const [selectedCert, setSelectedCert] = useState<CertificateRecord | null>(null);
   const [modalQrUrl, setModalQrUrl] = useState<string>('');
 
+  // Delete Event Confirmation State
+  const [eventToDelete, setEventToDelete] = useState<EventInfo | null>(null);
+  const [isDeletingEvent, setIsDeletingEvent] = useState<boolean>(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
   // Check existing Supabase auth session
   useEffect(() => {
     if (isSupabaseConfigured() && supabase) {
@@ -168,6 +173,35 @@ export const AdminPage: React.FC = () => {
       await loadAllData();
     } catch (err: any) {
       setEventMsg({ type: 'error', text: err.message || 'Failed to create event.' });
+    }
+  };
+
+  // -------------------------------------------------------------
+  // EVENT DELETION (Authenticated Admin with Cascade & Feedback)
+  // -------------------------------------------------------------
+  const handleConfirmDeleteEvent = async () => {
+    if (!eventToDelete) return;
+    setIsDeletingEvent(true);
+    setDeleteError(null);
+
+    try {
+      await certificateService.deleteEvent(eventToDelete.id);
+      const deletedId = eventToDelete.id;
+      setEventToDelete(null);
+
+      // Clean active selection states if deleted event was selected
+      if (importEventId === deletedId) {
+        setImportEventId('');
+      }
+      if (filterEventId === deletedId) {
+        setFilterEventId('all');
+      }
+
+      await loadAllData();
+    } catch (err: any) {
+      setDeleteError(err.message || 'Failed to delete event.');
+    } finally {
+      setIsDeletingEvent(false);
     }
   };
 
@@ -460,52 +494,70 @@ export const AdminPage: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {events.map(ev => {
-                    const certCount = certificates.filter(c => c.eventId.toLowerCase() === ev.id.toLowerCase()).length;
-                    return (
-                      <tr key={ev.id}>
-                        <td><strong>{ev.name}</strong></td>
-                        <td><code>{ev.code}</code></td>
-                        <td>{ev.year}</td>
-                        <td>{ev.dates}</td>
-                        <td><strong>{certCount}</strong></td>
-                        <td>
-                          <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-                            <button
-                              type="button"
-                              className="btn-sm-action"
-                              onClick={() => {
-                                setFilterEventId(ev.id);
-                                setActiveTab('certificates');
-                              }}
-                            >
-                              View
-                            </button>
-                            <button
-                              type="button"
-                              className="btn-sm-action btn-action-blue"
-                              onClick={() => {
-                                setImportEventId(ev.id);
-                                setActiveTab('import');
-                              }}
-                            >
-                              Upload Sheet
-                            </button>
-                            {certCount > 0 && (
+                  {events.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} style={{ textAlign: 'center', padding: '2.5rem 1rem', color: 'var(--text-muted)' }}>
+                        No events registered yet. Click "+ Add New Event" to create your first event.
+                      </td>
+                    </tr>
+                  ) : (
+                    events.map(ev => {
+                      const certCount = certificates.filter(c => c.eventId.toLowerCase() === ev.id.toLowerCase()).length;
+                      return (
+                        <tr key={ev.id}>
+                          <td><strong>{ev.name}</strong></td>
+                          <td><code>{ev.code}</code></td>
+                          <td>{ev.year}</td>
+                          <td>{ev.dates}</td>
+                          <td><strong>{certCount}</strong></td>
+                          <td>
+                            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
                               <button
                                 type="button"
                                 className="btn-sm-action"
-                                onClick={() => handleDownloadQrZip(ev)}
-                                disabled={qrDownloading}
+                                onClick={() => {
+                                  setFilterEventId(ev.id);
+                                  setActiveTab('certificates');
+                                }}
                               >
-                                Download QR ZIP
+                                View
                               </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                              <button
+                                type="button"
+                                className="btn-sm-action btn-action-blue"
+                                onClick={() => {
+                                  setImportEventId(ev.id);
+                                  setActiveTab('import');
+                                }}
+                              >
+                                Upload Sheet
+                              </button>
+                              {certCount > 0 && (
+                                <button
+                                  type="button"
+                                  className="btn-sm-action"
+                                  onClick={() => handleDownloadQrZip(ev)}
+                                  disabled={qrDownloading}
+                                >
+                                  Download QR ZIP
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                className="btn-sm-action btn-action-red"
+                                onClick={() => {
+                                  setDeleteError(null);
+                                  setEventToDelete(ev);
+                                }}
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
                 </tbody>
               </table>
             </div>
@@ -538,51 +590,69 @@ export const AdminPage: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {events.map(ev => {
-                    const certCount = certificates.filter(c => c.eventId.toLowerCase() === ev.id.toLowerCase()).length;
-                    return (
-                      <tr key={ev.id}>
-                        <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>{ev.id}</td>
-                        <td><strong>{ev.name}</strong></td>
-                        <td>{ev.dates}</td>
-                        <td><strong>{certCount} Certificates</strong></td>
-                        <td>
-                          <div style={{ display: 'flex', gap: '0.5rem' }}>
-                            <button
-                              type="button"
-                              className="btn-sm-action"
-                              onClick={() => {
-                                setFilterEventId(ev.id);
-                                setActiveTab('certificates');
-                              }}
-                            >
-                              View Certificates
-                            </button>
-                            <button
-                              type="button"
-                              className="btn-sm-action btn-action-blue"
-                              onClick={() => {
-                                setImportEventId(ev.id);
-                                setActiveTab('import');
-                              }}
-                            >
-                              Upload Sheet
-                            </button>
-                            {certCount > 0 && (
+                  {events.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} style={{ textAlign: 'center', padding: '2.5rem 1rem', color: 'var(--text-muted)' }}>
+                        No events found. Click "+ Create Event" above to create your first event.
+                      </td>
+                    </tr>
+                  ) : (
+                    events.map(ev => {
+                      const certCount = certificates.filter(c => c.eventId.toLowerCase() === ev.id.toLowerCase()).length;
+                      return (
+                        <tr key={ev.id}>
+                          <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>{ev.id}</td>
+                          <td><strong>{ev.name}</strong></td>
+                          <td>{ev.dates}</td>
+                          <td><strong>{certCount} Certificates</strong></td>
+                          <td>
+                            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                               <button
                                 type="button"
                                 className="btn-sm-action"
-                                onClick={() => handleDownloadQrZip(ev)}
-                                disabled={qrDownloading}
+                                onClick={() => {
+                                  setFilterEventId(ev.id);
+                                  setActiveTab('certificates');
+                                }}
                               >
-                                Download QR ZIP
+                                View Certificates
                               </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                              <button
+                                type="button"
+                                className="btn-sm-action btn-action-blue"
+                                onClick={() => {
+                                  setImportEventId(ev.id);
+                                  setActiveTab('import');
+                                }}
+                              >
+                                Upload Sheet
+                              </button>
+                              {certCount > 0 && (
+                                <button
+                                  type="button"
+                                  className="btn-sm-action"
+                                  onClick={() => handleDownloadQrZip(ev)}
+                                  disabled={qrDownloading}
+                                >
+                                  Download QR ZIP
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                className="btn-sm-action btn-action-red"
+                                onClick={() => {
+                                  setDeleteError(null);
+                                  setEventToDelete(ev);
+                                }}
+                              >
+                                Delete Event
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
                 </tbody>
               </table>
             </div>
@@ -663,8 +733,10 @@ export const AdminPage: React.FC = () => {
                 <tbody>
                   {filteredCerts.length === 0 ? (
                     <tr>
-                      <td colSpan={7} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
-                        No certificates match the selected filters.
+                      <td colSpan={7} style={{ textAlign: 'center', padding: '2.5rem 1rem', color: 'var(--text-muted)' }}>
+                        {certificates.length === 0 
+                          ? 'No certificates found. Select an event and upload a spreadsheet to import certificates.' 
+                          : 'No certificates match the selected filters.'}
                       </td>
                     </tr>
                   ) : (
@@ -812,21 +884,36 @@ export const AdminPage: React.FC = () => {
             {/* Target Event Selector */}
             <div className="form-group" style={{ marginBottom: '1.5rem' }}>
               <label className="form-label">Select Target Event</label>
-              <select
-                className="form-select"
-                value={importEventId}
-                onChange={(e) => {
-                  setImportEventId(e.target.value);
-                  setValidationResult(null);
-                  setSelectedFile(null);
-                }}
-              >
-                {events.map(ev => (
-                  <option key={ev.id} value={ev.id}>
-                    {ev.name} ({ev.code}-{ev.year})
-                  </option>
-                ))}
-              </select>
+              {events.length === 0 ? (
+                <div style={{ padding: '0.85rem 1rem', background: 'var(--status-warning-bg)', border: '1px solid var(--status-warning-border)', borderRadius: 'var(--radius-sm)', color: 'var(--status-warning)', fontSize: '0.9rem' }}>
+                  No events found. Please{' '}
+                  <button 
+                    type="button" 
+                    onClick={() => setActiveTab('add-event')} 
+                    style={{ background: 'none', border: 'none', color: 'var(--primary-blue)', fontWeight: 700, cursor: 'pointer', textDecoration: 'underline', padding: 0 }}
+                  >
+                    create an event
+                  </button>{' '}
+                  before uploading participant spreadsheets.
+                </div>
+              ) : (
+                <select
+                  className="form-select"
+                  value={importEventId}
+                  onChange={(e) => {
+                    setImportEventId(e.target.value);
+                    setValidationResult(null);
+                    setSelectedFile(null);
+                  }}
+                >
+                  <option value="">-- Choose Target Event --</option>
+                  {events.map(ev => (
+                    <option key={ev.id} value={ev.id}>
+                      {ev.name} ({ev.code}-{ev.year})
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
 
             {/* Dropzone */}
@@ -1053,6 +1140,73 @@ export const AdminPage: React.FC = () => {
                 onClick={() => setSelectedCert(null)}
               >
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* DELETE EVENT CONFIRMATION MODAL */}
+      {eventToDelete && (
+        <div className="modal-overlay" onClick={() => !isDeletingEvent && setEventToDelete(null)}>
+          <div className="modal-dialog" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '480px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginBottom: '1rem', color: 'var(--status-invalid)' }}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                <line x1="12" y1="9" x2="12" y2="13" />
+                <line x1="12" y1="17" x2="12.01" y2="17" />
+              </svg>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0 }}>Delete Event Confirmation</h3>
+            </div>
+
+            <p style={{ fontSize: '0.92rem', color: 'var(--text-main)', marginBottom: '1rem', lineHeight: 1.5 }}>
+              Are you sure you want to permanently delete the event <strong>{eventToDelete.name}</strong> (<code>{eventToDelete.id}</code>)?
+            </p>
+
+            <div style={{ 
+              backgroundColor: 'var(--status-invalid-bg)', 
+              border: '1px solid var(--status-invalid-border)', 
+              borderRadius: 'var(--radius-sm)', 
+              padding: '0.85rem 1rem', 
+              marginBottom: '1.25rem',
+              color: 'var(--status-invalid)',
+              fontSize: '0.88rem',
+              lineHeight: 1.45
+            }}>
+              <strong>Permanent Deletion Warning:</strong>
+              <div style={{ marginTop: '0.35rem' }}>
+                Deleting this event will permanently remove the event record and all{' '}
+                <strong>{certificates.filter(c => c.eventId.toLowerCase() === eventToDelete.id.toLowerCase()).length}</strong>{' '}
+                associated certificate records.
+              </div>
+              <div style={{ marginTop: '0.35rem', fontWeight: 700 }}>
+                This action cannot be undone.
+              </div>
+            </div>
+
+            {deleteError && (
+              <div style={{ color: 'var(--status-invalid)', fontSize: '0.85rem', marginBottom: '1rem', fontWeight: 600 }}>
+                {deleteError}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setEventToDelete(null)}
+                disabled={isDeletingEvent}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn-sm-action btn-action-red"
+                style={{ padding: '0.55rem 1rem', fontSize: '0.88rem' }}
+                onClick={handleConfirmDeleteEvent}
+                disabled={isDeletingEvent}
+              >
+                {isDeletingEvent ? 'Deleting...' : 'Yes, Delete Event & All Certificates'}
               </button>
             </div>
           </div>

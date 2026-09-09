@@ -8,18 +8,9 @@ export const CERTIFICATE_ID_REGEX = /^IKSC-[A-Z0-9]+-\d{4}-\d{4}$/i;
 class CertificateService {
   private localEvents: EventInfo[] = defaultEvents as EventInfo[];
   private localCertificates: CertificateRecord[] = [];
-  private localLoaded = false;
 
   private async ensureLocalDataLoaded(): Promise<void> {
-    if (!this.localLoaded) {
-      try {
-        const ebtcData = (await import('../data/certificates/ebtc-2026.json')).default as CertificateRecord[];
-        this.localCertificates = [...ebtcData];
-        this.localLoaded = true;
-      } catch (e) {
-        console.warn('Could not load fallback certificates', e);
-      }
-    }
+    // Initial state is clean. Records are added by admin imports or loaded from Supabase.
   }
 
   public normalizeId(rawId: string | null | undefined): string {
@@ -287,14 +278,69 @@ class CertificateService {
   }
 
   /**
-   * Resets local in-memory dataset to the exact clean production baseline:
-   * 1 Event (EBTC-2026) and 111 Certificates (IKSC-EBTC-2026-0001..0111)
+   * Resets local in-memory dataset to clean baseline (0 events, 0 certs)
    */
   public async resetToProductionDataset(): Promise<void> {
-    this.localEvents = [...(defaultEvents as EventInfo[])];
-    const ebtcData = (await import('../data/certificates/ebtc-2026.json')).default as CertificateRecord[];
-    this.localCertificates = [...ebtcData];
-    this.localLoaded = true;
+    this.localEvents = [];
+    this.localCertificates = [];
+  }
+
+  /**
+   * Permanently deletes an event and all its associated certificates
+   * Available only to authenticated admins
+   */
+  public async deleteEvent(eventId: string): Promise<void> {
+    const cleanId = eventId.trim();
+
+    // 1. Supabase Deletion
+    if (isSupabaseConfigured() && supabase) {
+      // Explicitly delete certificates first to prevent orphaned records
+      const { error: certsErr } = await supabase
+        .from('certificates')
+        .delete()
+        .eq('event_id', cleanId);
+      if (certsErr) {
+        console.warn('Error deleting certificates for event:', certsErr);
+      }
+
+      // Delete the event
+      const { error: eventErr } = await supabase
+        .from('events')
+        .delete()
+        .eq('id', cleanId);
+      if (eventErr) {
+        throw new Error(eventErr.message);
+      }
+    }
+
+    // 2. Local State Deletion
+    this.localEvents = this.localEvents.filter(
+      e => e.id.toLowerCase() !== cleanId.toLowerCase()
+    );
+    this.localCertificates = this.localCertificates.filter(
+      c => c.eventId.toLowerCase() !== cleanId.toLowerCase()
+    );
+  }
+
+  /**
+   * Permanently deletes an individual certificate
+   */
+  public async deleteCertificate(certId: string): Promise<void> {
+    const cleanId = certId.trim().toUpperCase();
+
+    if (isSupabaseConfigured() && supabase) {
+      const { error } = await supabase
+        .from('certificates')
+        .delete()
+        .eq('id', cleanId);
+      if (error) {
+        throw new Error(error.message);
+      }
+    }
+
+    this.localCertificates = this.localCertificates.filter(
+      c => c.id.toUpperCase() !== cleanId
+    );
   }
 
   public async updateCertificateStatus(id: string, status: 'VALID' | 'REVOKED'): Promise<void> {

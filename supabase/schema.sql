@@ -109,15 +109,3 @@ CREATE POLICY "Admins can delete certificates"
     TO authenticated
     USING (true);
 
--- 4. Initial Production Event: Engineering Beyond the Classroom
-INSERT INTO public.events (id, code, name, year, dates, organizer, description)
-VALUES (
-    'EBTC-2026',
-    'EBTC',
-    'Engineering Beyond the Classroom',
-    2026,
-    '15th and 16th August 2026',
-    'IUCEE KARE Student Chapter',
-    'Signature symposium and colloquium organized by IUCEE KARE Student Chapter.'
-)
-ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, dates = EXCLUDED.dates;

@@ -7,30 +7,30 @@ const __dirname = path.dirname(__filename);
 
 const DATA_DIR = path.join(__dirname, '..', 'src', 'data');
 
-console.log('=== IKSC Certificate Verification Portal Test Suite ===\n');
+console.log('=== IKSC Certificate Verification Portal Pre-Deployment Verification ===\n');
 
-// 1. Test Events: Exactly 1 real event (EBTC-2026)
+// 1. Test Clean Baseline: 0 fake/test events
 const eventsRaw = JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'events.json'), 'utf-8'));
-if (eventsRaw.length === 1 && eventsRaw[0].id === 'EBTC-2026') {
-  console.log(`[PASS] Events Loaded: Exactly ${eventsRaw.length} event (EBTC-2026: ${eventsRaw[0].name}).`);
+if (Array.isArray(eventsRaw) && eventsRaw.length === 0) {
+  console.log('[PASS] Events Registry: Completely clean (0 fake/test events).');
 } else {
-  console.error(`[FAIL] Expected exactly 1 event (EBTC-2026), got ${eventsRaw.length}:`, eventsRaw);
+  console.error(`[FAIL] Expected 0 pre-loaded events in events.json, found ${eventsRaw.length}`);
   process.exit(1);
 }
 
-// 2. Test 111 EBTC Certificates
+// 2. Test Real EBTC Participant Master Data Available for Import
 const ebtcRaw = JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'certificates', 'ebtc-2026.json'), 'utf-8'));
 if (ebtcRaw.length === 111) {
-  console.log(`[PASS] EBTC Certificate Roster count: EXACTLY ${ebtcRaw.length} certificates.`);
+  console.log(`[PASS] EBTC Master Certificate Roster count: EXACTLY ${ebtcRaw.length} certificates ready for import.`);
 } else {
-  console.error(`[FAIL] Expected 111 EBTC certificates, got ${ebtcRaw.length}`);
+  console.error(`[FAIL] Expected 111 EBTC certificates in roster file, got ${ebtcRaw.length}`);
   process.exit(1);
 }
 
 // 3. Test Benchmark Certificate: IKSC-EBTC-2026-0001
 const cert0001 = ebtcRaw.find(c => c.id === 'IKSC-EBTC-2026-0001');
 if (!cert0001) {
-  console.error('[FAIL] Certificate IKSC-EBTC-2026-0001 not found!');
+  console.error('[FAIL] Certificate IKSC-EBTC-2026-0001 not found in master roster!');
   process.exit(1);
 }
 
@@ -59,26 +59,19 @@ checks.forEach(([label, actual, expected]) => {
 
 if (!allPassed) process.exit(1);
 
-// 4. Test Database Seed Generation
-const seedSqlPath = path.join(__dirname, '..', 'supabase', 'seed_ebtc_111.sql');
-if (fs.existsSync(seedSqlPath)) {
-  const seedContent = fs.readFileSync(seedSqlPath, 'utf-8');
-  if (seedContent.includes('IKSC-EBTC-2026-0001') && seedContent.includes('IKSC-EBTC-2026-0111')) {
-    console.log('\n[PASS] Supabase SQL seed file verified with all 111 certificates.');
+// 4. Test Vercel SPA Routing Configuration
+const vercelConfigPath = path.join(__dirname, '..', 'vercel.json');
+if (fs.existsSync(vercelConfigPath)) {
+  const vercelJson = JSON.parse(fs.readFileSync(vercelConfigPath, 'utf-8'));
+  if (vercelJson.rewrites && vercelJson.rewrites.length > 0) {
+    console.log('\n[PASS] vercel.json SPA rewrite rules verified.');
   } else {
-    console.error('[FAIL] Supabase SQL seed file missing certificates.');
+    console.error('[FAIL] vercel.json missing rewrites rule.');
     process.exit(1);
   }
-}
-
-// 5. Test Live HTTP Server
-try {
-  const res = await fetch('http://localhost:5173/');
-  if (res.ok) {
-    console.log(`\n[PASS] Local HTTP dev server is running and returned status ${res.status}`);
-  }
-} catch (e) {
-  console.log('\n[INFO] Local dev server check skipped.');
+} else {
+  console.error('[FAIL] vercel.json not found!');
+  process.exit(1);
 }
 
 console.log('\n=== ALL SYSTEM TESTS PASSED SUCCESSFULLY! ===');

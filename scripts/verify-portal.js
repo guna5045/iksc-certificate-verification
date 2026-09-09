@@ -39,34 +39,42 @@ const benchmarkChecks = [
   },
   {
     id: 'IKSC-EBTC-2026-0002',
-    participantName: 'SWETHA N',
-    registrationNumber: '9924030002',
-    yearOfStudy: '1st Year',
-    department: 'Civil Engineering',
+    participantName: 'ASHIKA ASHOKKUMAR',
+    registrationNumber: '99240040015',
+    yearOfStudy: '3rd Year',
+    department: 'Computer Science and Engineering(CSE)',
+    status: 'VALID'
+  },
+  {
+    id: 'IKSC-EBTC-2026-0003',
+    participantName: 'BATTU VENU GOPAL',
+    registrationNumber: '99240040020',
+    yearOfStudy: '3rd Year',
+    department: 'Computer Science and Engineering(CSE)',
     status: 'VALID'
   },
   {
     id: 'IKSC-EBTC-2026-0008',
-    participantName: 'DIVYA T',
-    registrationNumber: '9924030008',
-    yearOfStudy: '1st Year',
-    department: 'Information Technology',
+    participantName: 'GAJULA BHAVYASREE',
+    registrationNumber: '99240040044',
+    yearOfStudy: '3rd Year',
+    department: 'Computer Science and Engineering(CSE)',
     status: 'VALID'
   },
   {
     id: 'IKSC-EBTC-2026-0088',
-    participantName: 'DIVYA T',
-    registrationNumber: '9924030088',
-    yearOfStudy: '1st Year',
-    department: 'Information Technology',
+    participantName: 'SANJANA S',
+    registrationNumber: '99250040671',
+    yearOfStudy: '2nd Year',
+    department: 'Computer Science and Engineering(CSE)',
     status: 'VALID'
   },
   {
     id: 'IKSC-EBTC-2026-0111',
-    participantName: 'ROHIT P',
-    registrationNumber: '9924030111',
+    participantName: 'DONTALA KRISHNA KANTH',
+    registrationNumber: '9924008078',
     yearOfStudy: '3rd Year',
-    department: 'Artificial Intelligence & Data Science',
+    department: 'Information Technology',
     status: 'VALID'
   }
 ];
@@ -92,12 +100,21 @@ for (const check of benchmarkChecks) {
   }
 }
 
-// 4. Test Vercel SPA Routing Configuration
+// 4. Assert zero instances of old fake names (e.g. GOKUL)
+const gokul = ebtcRaw.filter(c => JSON.stringify(c).toLowerCase().includes('gokul'));
+if (gokul.length === 0) {
+  console.log('\n[PASS] Confirmed 0 instances of old/fake participant data (e.g. GOKUL).');
+} else {
+  console.error('[FAIL] Found old fake participant data!', gokul);
+  process.exit(1);
+}
+
+// 5. Test Vercel SPA Routing Configuration
 const vercelConfigPath = path.join(__dirname, '..', 'vercel.json');
 if (fs.existsSync(vercelConfigPath)) {
   const vercelJson = JSON.parse(fs.readFileSync(vercelConfigPath, 'utf-8'));
   if (vercelJson.rewrites && vercelJson.rewrites.length > 0) {
-    console.log('\n[PASS] vercel.json SPA rewrite rules verified.');
+    console.log('[PASS] vercel.json SPA rewrite rules verified.');
   } else {
     console.error('[FAIL] vercel.json missing rewrites rule.');
     process.exit(1);

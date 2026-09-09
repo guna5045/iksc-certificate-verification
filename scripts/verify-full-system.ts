@@ -8,7 +8,7 @@ console.log('IKSC CERTIFICATE VERIFICATION & ADMIN SYSTEM TEST SUITE');
 console.log('===========================================================\n');
 
 let passedTests = 0;
-const totalTests = 20;
+const totalTests = 21;
 
 function assert(condition: boolean, testNum: number, desc: string) {
   if (condition) {
@@ -53,103 +53,113 @@ async function runTests() {
     c0001.status === 'VALID';
   assert(specMatch0001, 3, 'IKSC-EBTC-2026-0001 resolves to JEYAPREETHA S R with exact details.');
 
-  // TEST 4: Benchmark Certificate 0002 (SWETHA N)
+  // TEST 4: Benchmark Certificate 0002 (ASHIKA ASHOKKUMAR)
   const res0002 = await certificateService.verifyCertificate('IKSC-EBTC-2026-0002');
   assert(
-    res0002.state === 'VERIFIED' && res0002.certificate?.participantName === 'SWETHA N',
+    res0002.state === 'VERIFIED' && res0002.certificate?.participantName === 'ASHIKA ASHOKKUMAR',
     4,
-    'IKSC-EBTC-2026-0002 resolves to SWETHA N.'
+    'IKSC-EBTC-2026-0002 resolves to ASHIKA ASHOKKUMAR.'
   );
 
-  // TEST 5: Benchmark Certificate 0008 (DIVYA T - 9924030008)
+  // TEST 5: Benchmark Certificate 0003 (BATTU VENU GOPAL)
+  const res0003 = await certificateService.verifyCertificate('IKSC-EBTC-2026-0003');
+  assert(
+    res0003.state === 'VERIFIED' && 
+    res0003.certificate?.participantName === 'BATTU VENU GOPAL' && 
+    res0003.certificate?.registrationNumber === '99240040020',
+    5,
+    'IKSC-EBTC-2026-0003 resolves to BATTU VENU GOPAL (99240040020).'
+  );
+
+  // TEST 6: Benchmark Certificate 0008 (GAJULA BHAVYASREE - 99240040044)
   const res0008 = await certificateService.verifyCertificate('IKSC-EBTC-2026-0008');
   assert(
     res0008.state === 'VERIFIED' && 
-    res0008.certificate?.participantName === 'DIVYA T' && 
-    res0008.certificate?.registrationNumber === '9924030008',
-    5,
-    'IKSC-EBTC-2026-0008 resolves to DIVYA T (9924030008).'
+    res0008.certificate?.participantName === 'GAJULA BHAVYASREE' && 
+    res0008.certificate?.registrationNumber === '99240040044',
+    6,
+    'IKSC-EBTC-2026-0008 resolves to GAJULA BHAVYASREE (99240040044).'
   );
 
-  // TEST 6: Benchmark Certificate 0088 (DIVYA T - 9924030088)
+  // TEST 7: Benchmark Certificate 0088 (SANJANA S - 99250040671)
   const res0088 = await certificateService.verifyCertificate('IKSC-EBTC-2026-0088');
   assert(
     res0088.state === 'VERIFIED' && 
-    res0088.certificate?.participantName === 'DIVYA T' && 
-    res0088.certificate?.registrationNumber === '9924030088',
-    6,
-    'IKSC-EBTC-2026-0088 resolves to DIVYA T (9924030088).'
+    res0088.certificate?.participantName === 'SANJANA S' && 
+    res0088.certificate?.registrationNumber === '99250040671',
+    7,
+    'IKSC-EBTC-2026-0088 resolves to SANJANA S (99250040671).'
   );
 
-  // TEST 7: Benchmark Certificate 0111 (ROHIT P)
+  // TEST 8: Benchmark Certificate 0111 (DONTALA KRISHNA KANTH)
   const res0111 = await certificateService.verifyCertificate('IKSC-EBTC-2026-0111');
   assert(
-    res0111.state === 'VERIFIED' && res0111.certificate?.participantName === 'ROHIT P',
-    7,
-    'IKSC-EBTC-2026-0111 resolves to ROHIT P.'
+    res0111.state === 'VERIFIED' && res0111.certificate?.participantName === 'DONTALA KRISHNA KANTH',
+    8,
+    'IKSC-EBTC-2026-0111 resolves to DONTALA KRISHNA KANTH.'
   );
 
-  // TEST 8: Non-existent ID: IKSC-EBTC-2026-9999 returns NOT_FOUND with zero certificate data
+  // TEST 9: Non-existent ID: IKSC-EBTC-2026-9999 returns NOT_FOUND with zero certificate data
   const res9999 = await certificateService.verifyCertificate('IKSC-EBTC-2026-9999');
   assert(
     res9999.state === 'NOT_FOUND' && !res9999.certificate,
-    8,
+    9,
     'Non-existent ID IKSC-EBTC-2026-9999 returns NOT_FOUND with zero exposed data.'
   );
 
-  // TEST 9: Event Isolation: Valid EBTC ID + EBTC event selected: SUCCESS
+  // TEST 10: Event Isolation: Valid EBTC ID + EBTC event selected: SUCCESS
   const resIsoOk = await certificateService.verifyCertificate('IKSC-EBTC-2026-0001', 'EBTC-2026');
   assert(
     resIsoOk.state === 'VERIFIED' && resIsoOk.certificate?.participantName === 'JEYAPREETHA S R',
-    9,
+    10,
     'Event isolation: Correct event selected returns VERIFIED.'
   );
 
-  // TEST 10: Event Isolation: Valid EBTC ID + different event selected: FAIL (Zero data leak)
+  // TEST 11: Event Isolation: Valid EBTC ID + different event selected: FAIL (Zero data leak)
   const resIsoFail = await certificateService.verifyCertificate('IKSC-EBTC-2026-0001', 'OTHER-2027');
   assert(
     resIsoFail.state === 'NOT_FOUND' && !resIsoFail.certificate,
-    10,
+    11,
     'Event isolation: Wrong event selected returns NOT_FOUND with zero data leak.'
   );
 
-  // TEST 11: Invalid format returns NOT_FOUND/INVALID_FORMAT
+  // TEST 12: Invalid format returns NOT_FOUND/INVALID_FORMAT
   const resInvalid = await certificateService.verifyCertificate('INVALID-ID-1234');
   assert(
     resInvalid.state === 'NOT_FOUND' || resInvalid.state === 'INVALID_FORMAT',
-    11,
+    12,
     'Invalid certificate ID format returns failure state.'
   );
 
-  // TEST 12: Revoked certificate shows Certificate Not Valid
+  // TEST 13: Revoked certificate shows Certificate Not Valid
   await certificateService.updateCertificateStatus('IKSC-EBTC-2026-0002', 'REVOKED');
   const resRevoked = await certificateService.verifyCertificate('IKSC-EBTC-2026-0002');
   assert(
     resRevoked.state === 'REVOKED' && resRevoked.errorMessage === 'This certificate is currently not valid.',
-    12,
+    13,
     'Revoked certificate returns state REVOKED ("Certificate Not Valid").'
   );
   // Restore it back
   await certificateService.updateCertificateStatus('IKSC-EBTC-2026-0002', 'VALID');
 
-  // TEST 13: Direct QR URL lookup without event selector
+  // TEST 14: Direct QR URL lookup without event selector
   const resDirect = await certificateService.verifyCertificate('IKSC-EBTC-2026-0001');
   assert(
     resDirect.state === 'VERIFIED' && resDirect.certificate?.id === 'IKSC-EBTC-2026-0001',
-    13,
+    14,
     'Direct QR URL lookup without event selector: SUCCESS.'
   );
 
-  // TEST 14: QR dynamically encodes exact verification URL
+  // TEST 15: QR dynamically encodes exact verification URL
   const testUrl = `https://iksc-certificate-verification.vercel.app/verify?id=${encodeURIComponent('IKSC-EBTC-2026-0001')}`;
   const qrData = await QRCode.toDataURL(testUrl, { width: 300 });
   assert(
     qrData.startsWith('data:image/png;base64,') && testUrl.includes('id=IKSC-EBTC-2026-0001'),
-    14,
+    15,
     'QR dynamically encodes exact verification URL.'
   );
 
-  // TEST 15: Admin can create future events
+  // TEST 16: Admin can create future events
   const testEventFuture = {
     id: 'AIWORK-2027',
     code: 'AIWORK',
@@ -162,22 +172,22 @@ async function runTests() {
   const eventsAfterFuture = await certificateService.getEvents();
   assert(
     eventsAfterFuture.some(e => e.id === 'AIWORK-2027'),
-    15,
+    16,
     'Admin successfully added future event AIWORK-2027.'
   );
 
-  // TEST 16: Independent serial numbering for future events
+  // TEST 17: Independent serial numbering for future events
   const testRowsA = [
     { rowNumber: 2, fullName: 'STUDENT A', registrationNumber: '9927001001', year: '2nd Year', department: 'CSE', errors: [] }
   ];
   const generatedA = importerService.generateCertificates(testEventFuture, testRowsA, 0);
   assert(
     generatedA[0].id === 'IKSC-AIWORK-2027-0001',
-    16,
+    17,
     'Future Event serial starts independently at 0001.'
   );
 
-  // TEST 17: Spreadsheet validator catches errors
+  // TEST 18: Spreadsheet validator catches errors
   const badRows = [
     { 'Full Name': '', 'Registration Number': '9924001', 'Year': '3rd Year', 'Department': 'CSE' },
     { 'Full Name': 'DUPE A', 'Registration Number': '9924999', 'Year': '3rd Year', 'Department': 'CSE' },
@@ -186,36 +196,36 @@ async function runTests() {
   const validation = importerService.validateRows(badRows);
   assert(
     validation.invalidRows > 0,
-    17,
+    18,
     'Spreadsheet validator catches invalid rows and duplicate registration numbers.'
   );
 
-  // TEST 18: Delete future event cleans up without affecting EBTC-2026
+  // TEST 19: Delete future event cleans up without affecting EBTC-2026
   await certificateService.deleteEvent('AIWORK-2027');
   const eventsAfterCleanup = await certificateService.getEvents();
   assert(
     !eventsAfterCleanup.some(e => e.id === 'AIWORK-2027') && eventsAfterCleanup.some(e => e.id === 'EBTC-2026'),
-    18,
+    19,
     'Deleting future event cleanly removes it while preserving EBTC-2026.'
   );
 
-  // TEST 19: QR ZIP packaging
+  // TEST 20: QR ZIP packaging
   const zip = new JSZip();
   zip.file('IKSC-EBTC-2026-0001.png', 'png-data');
   const zipFiles = Object.keys(zip.files);
   assert(
     zipFiles.length === 1 && zipFiles[0].startsWith('IKSC-EBTC-2026-'),
-    19,
+    20,
     'QR ZIP packaging succeeds.'
   );
 
-  // TEST 20: Final verification of production baseline
+  // TEST 21: Final verification of production baseline
   await certificateService.resetToProductionDataset();
   const finalEvents = await certificateService.getEvents();
   const finalCerts = await certificateService.getCertificatesForAdmin();
   assert(
     finalEvents.length === 1 && finalEvents[0].id === 'EBTC-2026' && finalCerts.length === 111,
-    20,
+    21,
     'Final baseline confirmed: Exactly 1 real event (EBTC-2026) and 111 real certificates.'
   );
 

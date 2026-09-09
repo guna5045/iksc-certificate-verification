@@ -35,24 +35,28 @@ async function verifyProduction() {
     ['IKSC-EBTC-2026-0001', bundle.body.includes('IKSC-EBTC-2026-0001')],
     ['JEYAPREETHA S R', bundle.body.includes('JEYAPREETHA S R')],
     ['9924030005', bundle.body.includes('9924030005')],
-    ['Aeronautical Engineering', bundle.body.includes('Aeronautical Engineering')],
     ['IKSC-EBTC-2026-0002', bundle.body.includes('IKSC-EBTC-2026-0002')],
-    ['SWETHA N', bundle.body.includes('SWETHA N')],
+    ['ASHIKA ASHOKKUMAR', bundle.body.includes('ASHIKA ASHOKKUMAR')],
+    ['99240040015', bundle.body.includes('99240040015')],
+    ['IKSC-EBTC-2026-0003', bundle.body.includes('IKSC-EBTC-2026-0003')],
+    ['BATTU VENU GOPAL', bundle.body.includes('BATTU VENU GOPAL')],
+    ['99240040020', bundle.body.includes('99240040020')],
     ['IKSC-EBTC-2026-0008', bundle.body.includes('IKSC-EBTC-2026-0008')],
+    ['GAJULA BHAVYASREE', bundle.body.includes('GAJULA BHAVYASREE')],
     ['IKSC-EBTC-2026-0088', bundle.body.includes('IKSC-EBTC-2026-0088')],
+    ['SANJANA S', bundle.body.includes('SANJANA S')],
     ['IKSC-EBTC-2026-0111', bundle.body.includes('IKSC-EBTC-2026-0111')],
-    ['ROHIT P', bundle.body.includes('ROHIT P')],
-    ['iksc_events', bundle.body.includes('iksc_events')],
-    ['iksc_certificates', bundle.body.includes('iksc_certificates')]
+    ['DONTALA KRISHNA KANTH', bundle.body.includes('DONTALA KRISHNA KANTH')],
+    ['Absence of GOKUL (Zero Fake Data)', !bundle.body.includes('GOKUL')]
   ];
 
   console.log('\n--- Production Deployment Bundle Verification ---');
   let allPass = true;
   for (const [name, pass] of tests) {
     if (pass) {
-      console.log(`[PASS] Contains ${name}`);
+      console.log(`[PASS] ${name}`);
     } else {
-      console.error(`[FAIL] Missing ${name}`);
+      console.error(`[FAIL] Check failed for ${name}`);
       allPass = false;
     }
   }

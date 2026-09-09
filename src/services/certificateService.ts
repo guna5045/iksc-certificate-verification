@@ -6,16 +6,17 @@ import ebtcCertificates from '../data/certificates/ebtc-2026.json';
 // Standard IKSC ID Regex: e.g. IKSC-EBTC-2026-0001
 export const CERTIFICATE_ID_REGEX = /^IKSC-[A-Z0-9]+-\d{4}-\d{4}$/i;
 
-const STORAGE_EVENTS_KEY = 'iksc_events';
-const STORAGE_CERTS_KEY = 'iksc_certificates';
+const STORAGE_EVENTS_KEY = 'iksc_events_v2';
+const STORAGE_CERTS_KEY = 'iksc_certificates_v2';
 
 function loadStoredEvents(): EventInfo[] {
   if (typeof window !== 'undefined' && window.localStorage) {
     try {
+      localStorage.removeItem('iksc_events'); // Purge legacy cache
       const stored = localStorage.getItem(STORAGE_EVENTS_KEY);
       if (stored !== null) {
         const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) {
+        if (Array.isArray(parsed) && parsed.length > 0) {
           return parsed;
         }
       }
@@ -29,11 +30,19 @@ function loadStoredEvents(): EventInfo[] {
 function loadStoredCertificates(): CertificateRecord[] {
   if (typeof window !== 'undefined' && window.localStorage) {
     try {
+      localStorage.removeItem('iksc_certificates'); // Purge legacy cache
       const stored = localStorage.getItem(STORAGE_CERTS_KEY);
       if (stored !== null) {
         const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) {
-          return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // Reject any legacy cache that might contain fake mock data
+          const hasStaleMock = parsed.some(
+            c => (c.participantName && c.participantName.includes('GOKUL')) ||
+                 (c.id === 'IKSC-EBTC-2026-0003' && c.participantName !== 'BATTU VENU GOPAL')
+          );
+          if (!hasStaleMock) {
+            return parsed;
+          }
         }
       }
     } catch (e) {

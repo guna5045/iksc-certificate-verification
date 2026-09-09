@@ -4,3 +4,5 @@ dist
 .env.local
 .DS_Store
 *.log
+qr-codes/
+/IKSC-EBTC-2026-QR-Codes.zip
